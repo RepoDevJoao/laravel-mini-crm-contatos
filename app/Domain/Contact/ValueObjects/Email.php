@@ -33,9 +33,11 @@ class Email
 
     public function isCorporate(): bool
     {
-        $domain = $this->getDomain();
+        $domain     = $this->getDomain();
+        $domainBase = $this->getDomainBase();
 
-        return !in_array($domain, self::NON_CORPORATE_DOMAINS, true);
+        return !in_array($domain, self::NON_CORPORATE_DOMAINS, true)
+            && !in_array($domainBase, self::NON_CORPORATE_DOMAINS, true);
     }
 
     public function isFromBrazil(): bool
@@ -46,5 +48,17 @@ class Email
     private function getDomain(): string
     {
         return substr($this->email, strpos($this->email, '@') + 1);
+    }
+
+    private function getDomainBase(): string
+    {
+        $domain = $this->getDomain();
+        $parts  = explode('.', $domain);
+
+        if (count($parts) >= 3) {
+            return $parts[0] . '.' . $parts[1];
+        }
+
+        return $domain;
     }
 }
