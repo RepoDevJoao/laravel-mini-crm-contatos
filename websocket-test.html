@@ -1,0 +1,36 @@
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+        <meta charset="UTF-8">
+        <title>Mini CRM - WebSocket Test</title>
+        <script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
+    </head>
+    <body>
+        <h2>Aguardando atualização de score...</h2>
+        <pre id="output">Conectando...</pre>
+
+        <script>
+            const pusher = new Pusher('mini-crm-key', {
+                wsHost: 'localhost',
+                wsPort: 8080,
+                forceTLS: false,
+                disableStats: true,
+                enabledTransports: ['ws'],
+                cluster: 'mt1',
+            });
+
+            const contactId = 1;
+            const channel = pusher.subscribe('contacts.' + contactId);
+
+            channel.bind('score.processed', function(data) {
+                document.getElementById('output').textContent =
+                    JSON.stringify(data, null, 2);
+            });
+
+            pusher.connection.bind('connected', () => {
+                document.getElementById('output').textContent =
+                    'Conectado! Aguardando eventos no canal contacts.' + contactId;
+            });
+        </script>
+    </body>
+    </html>

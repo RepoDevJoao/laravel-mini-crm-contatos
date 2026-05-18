@@ -70,29 +70,7 @@ O projeto segue **DDD pragmático** com separação clara em três camadas:
     cp .env.example .env
     php artisan key:generate
 
-Edite o .env e ajuste:
-
-    DB_CONNECTION=mysql
-    DB_HOST=mysql
-    DB_PORT=3306
-    DB_DATABASE=mini_crm
-    DB_USERNAME=sail
-    DB_PASSWORD=password
-
-    QUEUE_CONNECTION=redis
-    CACHE_DRIVER=redis
-
-    REDIS_HOST=redis
-    REDIS_PASSWORD=null
-    REDIS_PORT=6379
-
-    BROADCAST_DRIVER=reverb
-    REVERB_APP_ID=mini-crm
-    REVERB_APP_KEY=mini-crm-key
-    REVERB_APP_SECRET=mini-crm-secret
-    REVERB_HOST=localhost
-    REVERB_PORT=8080
-    REVERB_SCHEME=http
+O arquivo .env.example já contém todas as configurações necessárias para o ambiente Sail.
 
 ### 4. Suba os containers
 
@@ -106,9 +84,9 @@ Edite o .env e ajuste:
 
 ## Rodando a aplicação completa
 
-Você precisará de três terminais rodando simultaneamente:
+Você precisará de três terminais WSL abertos rodando simultaneamente:
 
-Terminal 1 — Aplicação (já está rodando com sail up -d)
+Terminal 1 — Aplicação (já estará rodando com ./vendor/bin/sail up -d)
 
 Terminal 2 — Worker da fila (Redis)
 
@@ -150,14 +128,14 @@ Para rodar por camada:
 
 ### Exemplos
 
-Criar contato:
+No mesmo terminal do sail up -d (ou em qualquer outro), crie um contato exemplo:
 
     curl -s -X POST http://localhost/api/contacts \
       -H "Content-Type: application/json" \
       -H "Accept: application/json" \
       -d '{"name":"João Roberto","email":"joaoroberto@empresa.com.br","phone":"(11) 99999-8888"}' | jq
 
-Processar score:
+Em seguida, processe score:
 
     curl -s -X POST http://localhost/api/contacts/1/process-score \
       -H "Accept: application/json" | jq
@@ -201,46 +179,9 @@ Os bônus de e-mail são cumulativos: joao@empresa.com.br soma +30 pontos.
 
 ---
 
-## Escutando o WebSocket (exemplo HTML/JS)
+## Escutando o WebSocket na prática (exemplo HTML/JS)
 
-Com o Reverb rodando (sail artisan reverb:start), crie um arquivo websocket-test.html e abra no navegador:
-
-    <!DOCTYPE html>
-    <html lang="pt-BR">
-    <head>
-        <meta charset="UTF-8">
-        <title>Mini CRM - WebSocket Test</title>
-        <script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
-    </head>
-    <body>
-        <h2>Aguardando atualização de score...</h2>
-        <pre id="output">Conectando...</pre>
-
-        <script>
-            const pusher = new Pusher('mini-crm-key', {
-                wsHost: 'localhost',
-                wsPort: 8080,
-                forceTLS: false,
-                disableStats: true,
-                enabledTransports: ['ws'],
-                cluster: 'mt1',
-            });
-
-            const contactId = 1; // altere para o ID desejado
-            const channel = pusher.subscribe('contacts.' + contactId);
-
-            channel.bind('score.processed', function(data) {
-                document.getElementById('output').textContent =
-                    JSON.stringify(data, null, 2);
-            });
-
-            pusher.connection.bind('connected', () => {
-                document.getElementById('output').textContent =
-                    'Conectado! Aguardando eventos no canal contacts.' + contactId;
-            });
-        </script>
-    </body>
-    </html>
+Com o Reverb rodando (sail artisan reverb:start), abra o arquivo websocket-test.html, já incluído na raiz do projeto, no navegador.
 
 ---
 
@@ -257,4 +198,3 @@ Com o Reverb rodando (sail artisan reverb:start), crie um arquivo websocket-test
         ├── ContactCrudTest
         └── ProcessScoreTest
 
-56 testes | 80 assertions
