@@ -1,66 +1,260 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Mini CRM de Contatos
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+API REST para gerenciamento de contatos com cálculo assíncrono de score, eventos de domínio e atualização em tempo real via WebSockets.
 
-## About Laravel
+---
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Stack
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+- **Laravel 10** + **PHP 8.5**
+- **MySQL 8.4** — banco de dados
+- **Redis** — fila assíncrona
+- **Laravel Reverb** — WebSocket server
+- **Laravel Sail** — ambiente Docker
+- **PHPUnit 10** — testes
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+---
 
-## Learning Laravel
+## Arquitetura
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+O projeto segue **DDD pragmático** com separação clara em três camadas:
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+    app/
+    ├── Domain/          # Regras de negócio puras
+    │   └── Contact/
+    │       ├── ValueObjects/   # Email, Phone, ContactStatus
+    │       ├── Strategies/     # EmailScoreStrategy, NameScoreStrategy, PhoneScoreStrategy
+    │       ├── Services/       # ContactScoreCalculator
+    │       └── Events/
+    ├── Application/     # Orquestração dos fluxos
+    │   └── Contact/
+    │       ├── UseCases/
+    │       ├── DTOs/
+    │       └── Contracts/      # ContactRepositoryInterface
+    └── Infrastructure/  # Laravel, Eloquent, Redis, Reverb
+        ├── Http/               # Controllers, Requests, Resources
+        ├── Persistence/        # Eloquent Model, Repository, Observer
+        ├── Queue/              # Jobs
+        └── Broadcasting/       # Events, Listeners
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains over 2000 video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+### Padrões aplicados
 
-## Laravel Sponsors
+- **Strategy Pattern** — cada regra de score é uma estratégia isolada e extensível
+- **Repository Pattern** — ContactRepositoryInterface desacopla Application da infraestrutura
+- **Value Objects** — Email e Phone encapsulam validação e lógica de domínio
+- **Use Cases** — orquestração sem lógica nos Controllers ou Models
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the Laravel [Patreon page](https://patreon.com/taylorotwell).
+---
 
-### Premium Partners
+## Pré-requisitos
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Cubet Techno Labs](https://cubettech.com)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[Many](https://www.many.co.uk)**
-- **[Webdock, Fast VPS Hosting](https://www.webdock.io/en)**
-- **[DevSquad](https://devsquad.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[OP.GG](https://op.gg)**
-- **[WebReinvent](https://webreinvent.com/?utm_source=laravel&utm_medium=github&utm_campaign=patreon-sponsors)**
-- **[Lendio](https://lendio.com)**
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+- [WSL2](https://learn.microsoft.com/pt-br/windows/wsl/install) (Windows)
+- [Composer](https://getcomposer.org/)
 
-## Contributing
+---
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## Setup do ambiente
 
-## Code of Conduct
+### 1. Clone o repositório
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+    git clone https://github.com/RepoDevJoao/laravel-mini-crm-contatos.git
+    cd laravel-mini-crm-contatos
 
-## Security Vulnerabilities
+### 2. Instale as dependências
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+    composer install
 
-## License
+### 3. Configure o ambiente
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+    cp .env.example .env
+    php artisan key:generate
+
+Edite o .env e ajuste:
+
+    DB_CONNECTION=mysql
+    DB_HOST=mysql
+    DB_PORT=3306
+    DB_DATABASE=mini_crm
+    DB_USERNAME=sail
+    DB_PASSWORD=password
+
+    QUEUE_CONNECTION=redis
+    CACHE_DRIVER=redis
+
+    REDIS_HOST=redis
+    REDIS_PASSWORD=null
+    REDIS_PORT=6379
+
+    BROADCAST_DRIVER=reverb
+    REVERB_APP_ID=mini-crm
+    REVERB_APP_KEY=mini-crm-key
+    REVERB_APP_SECRET=mini-crm-secret
+    REVERB_HOST=localhost
+    REVERB_PORT=8080
+    REVERB_SCHEME=http
+
+### 4. Suba os containers
+
+    ./vendor/bin/sail up -d
+
+### 5. Rode as migrations
+
+    ./vendor/bin/sail artisan migrate
+
+---
+
+## Rodando a aplicação completa
+
+Você precisará de três terminais rodando simultaneamente:
+
+Terminal 1 — Aplicação (já está rodando com sail up -d)
+
+Terminal 2 — Worker da fila (Redis)
+
+    ./vendor/bin/sail artisan queue:work
+
+Terminal 3 — Servidor WebSocket (Reverb)
+
+    ./vendor/bin/sail artisan reverb:start
+
+---
+
+## Rodando os testes
+
+    ./vendor/bin/sail artisan test
+
+Para rodar por camada:
+
+    # Apenas testes unitários (Domain)
+    ./vendor/bin/sail artisan test tests/Unit/
+
+    # Apenas testes de integração (Use Cases)
+    ./vendor/bin/sail artisan test tests/Integration/
+
+    # Apenas testes de feature (Endpoints)
+    ./vendor/bin/sail artisan test tests/Feature/
+
+---
+
+## Endpoints
+
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| POST | /api/contacts | Criar contato |
+| GET | /api/contacts | Listar contatos (paginado) |
+| GET | /api/contacts/{id} | Exibir contato |
+| PUT | /api/contacts/{id} | Atualizar contato |
+| DELETE | /api/contacts/{id} | Excluir contato (soft delete) |
+| POST | /api/contacts/{id}/process-score | Enfileirar cálculo de score |
+
+### Exemplos
+
+Criar contato:
+
+    curl -s -X POST http://localhost/api/contacts \
+      -H "Content-Type: application/json" \
+      -H "Accept: application/json" \
+      -d '{"name":"João Roberto","email":"joaoroberto@empresa.com.br","phone":"(11) 99999-8888"}' | jq
+
+Processar score:
+
+    curl -s -X POST http://localhost/api/contacts/1/process-score \
+      -H "Accept: application/json" | jq
+
+---
+
+## Regras de cálculo do score
+
+| Critério | Pontos |
+|----------|--------|
+| E-mail com domínio corporativo (não gmail/hotmail/yahoo) | +20 |
+| E-mail terminado em .br | +10 |
+| Nome completo (mais de uma palavra) | +10 |
+| Telefone com DDD de SP (11-19) | +20 |
+| Telefone com DDD de outro estado | +10 |
+
+Os bônus de e-mail são cumulativos: joao@empresa.com.br soma +30 pontos.
+
+---
+
+## Fluxo do process-score
+
+    POST /api/contacts/{id}/process-score
+            │
+            ▼
+    ProcessContactScoreJob (enfileirado no Redis)
+            │
+            ▼
+    ProcessContactScoreUseCase
+      ├── status → processing
+      ├── ContactScoreCalculator (Strategy Pattern)
+      │     ├── EmailScoreStrategy
+      │     ├── NameScoreStrategy
+      │     └── PhoneScoreStrategy
+      ├── status → active | failed
+      ├── score e processed_at salvos
+      └── ContactScoreProcessed (event disparado)
+                │
+                ├── LogContactScoreListener → storage/logs/contact.log
+                └── Broadcast → canal contacts.{id} via Reverb
+
+---
+
+## Escutando o WebSocket (exemplo HTML/JS)
+
+Com o Reverb rodando (sail artisan reverb:start), crie um arquivo websocket-test.html e abra no navegador:
+
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+        <meta charset="UTF-8">
+        <title>Mini CRM - WebSocket Test</title>
+        <script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
+    </head>
+    <body>
+        <h2>Aguardando atualização de score...</h2>
+        <pre id="output">Conectando...</pre>
+
+        <script>
+            const pusher = new Pusher('mini-crm-key', {
+                wsHost: 'localhost',
+                wsPort: 8080,
+                forceTLS: false,
+                disableStats: true,
+                enabledTransports: ['ws'],
+                cluster: 'mt1',
+            });
+
+            const contactId = 1; // altere para o ID desejado
+            const channel = pusher.subscribe('contacts.' + contactId);
+
+            channel.bind('score.processed', function(data) {
+                document.getElementById('output').textContent =
+                    JSON.stringify(data, null, 2);
+            });
+
+            pusher.connection.bind('connected', () => {
+                document.getElementById('output').textContent =
+                    'Conectado! Aguardando eventos no canal contacts.' + contactId;
+            });
+        </script>
+    </body>
+    </html>
+
+---
+
+## Estrutura de testes
+
+    tests/
+    ├── Unit/Domain/
+    │   ├── ValueObjects/   # ContactStatus, Email, Phone
+    │   ├── Strategies/     # EmailScore, NameScore, PhoneScore
+    │   └── Services/       # ContactScoreCalculator
+    ├── Integration/UseCases/
+    │   └── ProcessContactScoreUseCaseTest
+    └── Feature/Api/
+        ├── ContactCrudTest
+        └── ProcessScoreTest
+
+56 testes | 80 assertions
